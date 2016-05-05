@@ -48,17 +48,17 @@ public class QuantilesSketchAggregatorFactoryTest
   {
     assertAggregatorFactorySerde(
         makeJson("name", "fieldName", 16, null, null),
-        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, null, false)
+        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, false, null)
     );
 
     assertAggregatorFactorySerde(
         makeJson("name", "fieldName", 16, false, true),
-        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, false, true)
+        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, false, 1024)
     );
 
     assertAggregatorFactorySerde(
         makeJson("name", "fieldName", 16, true, false),
-        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, true, false)
+        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, true, 4096)
     );
   }
 
@@ -67,14 +67,8 @@ public class QuantilesSketchAggregatorFactoryTest
   {
     QuantilesSketch sketch = new QuantilesSketchBuilder().build();
 
-    QuantilesSketchAggregatorFactory agg = new QuantilesSketchAggregatorFactory("name", "fieldName", 16, null, false);
+    QuantilesSketchAggregatorFactory agg = new QuantilesSketchAggregatorFactory("name", "fieldName", 16, false, null);
     Assert.assertEquals(0L, agg.finalizeComputation(sketch));
-
-    agg = new QuantilesSketchAggregatorFactory("name", "fieldName", 16, true, false);
-    Assert.assertEquals(0L, agg.finalizeComputation(sketch));
-
-    agg = new QuantilesSketchAggregatorFactory("name", "fieldName", 16, false, false);
-    Assert.assertEquals(sketch, agg.finalizeComputation(sketch));
   }
 
   private String makeJson(String name, String fieldName, Integer size, Boolean shouldFinalize, Boolean isInputSketch)

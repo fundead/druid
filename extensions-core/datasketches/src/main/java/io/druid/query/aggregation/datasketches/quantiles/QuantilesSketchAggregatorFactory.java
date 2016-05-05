@@ -50,8 +50,8 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
   protected final String name;
   protected final String fieldName;
   protected final int size;
-  private final boolean shouldFinalize;
   private final boolean isInputSketch;
+  private final int maxIntermediateOffheapSize;
 
   public static final Comparator<QuantilesSketch> COMPARATOR = new Comparator<QuantilesSketch>()
   {
@@ -67,8 +67,8 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
       @JsonProperty("name") String name,
       @JsonProperty("fieldName") String fieldName,
       @JsonProperty("size") Integer size,
-      @JsonProperty("shouldFinalize") Boolean shouldFinalize,
-      @JsonProperty("isInputSketch") boolean isInputSketch
+      @JsonProperty("isInputSketch") boolean isInputSketch,
+      @JsonProperty("maxOffheapSize") Integer maxIntermediateOffheapSize
   )
   {
     this.name = Preconditions.checkNotNull(name, "Must have a valid, non-null aggregator name");
@@ -81,7 +81,9 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
     //dummy sketch creation just to ensure all size restrictions are fulfilled.
     QuantilesSketchUtils.buildSketch(this.size);
 
-    this.shouldFinalize = (shouldFinalize == null) ? true : shouldFinalize.booleanValue();
+    this.maxIntermediateOffheapSize = (maxIntermediateOffheapSize == null) ? 1 : maxIntermediateOffheapSize;
+    Preconditions.checkArgument(this.maxIntermediateOffheapSize > 0, "maxIntermediateOffheapSize must be > 0.");
+
     this.isInputSketch = isInputSketch;
   }
 
@@ -159,23 +161,16 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
   }
 
   @JsonProperty
-  public boolean getShouldFinalize()
-  {
-    return shouldFinalize;
-  }
-
-  @JsonProperty
   public boolean getIsInputSketch()
   {
     return isInputSketch;
   }
 
   @Override
+  @JsonProperty("maxIntermediateOffheapSize")
   public int getMaxIntermediateSize()
   {
-    // off-heap implementation of quantiles sketch is not available right now and hence
-    // nothing is stored off-heap really.
-    return 1;
+    return maxIntermediateOffheapSize;
   }
 
   @Override
@@ -198,8 +193,8 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
             fieldName,
             fieldName,
             size,
-            shouldFinalize,
-            isInputSketch
+            isInputSketch,
+            maxIntermediateOffheapSize
         )
     );
   }
@@ -207,7 +202,7 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
   @Override
   public AggregatorFactory getCombiningFactory()
   {
-    return new QuantilesSketchAggregatorFactory(name, name, size, shouldFinalize, false);
+    return new QuantilesSketchAggregatorFactory(name, name, size, false, maxIntermediateOffheapSize);
   }
 
   @Override
@@ -220,8 +215,8 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
           name,
           name,
           Math.max(size, castedOther.size),
-          shouldFinalize,
-          false
+          false,
+          maxIntermediateOffheapSize
       );
     } else {
       throw new AggregatorFactoryNotMergeableException(this, other);
@@ -239,11 +234,7 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
   @Override
   public Object finalizeComputation(Object object)
   {
-    if (shouldFinalize) {
-      return ((QuantilesSketch) object).getN();
-    } else {
-      return object;
-    }
+    return ((QuantilesSketch) object).getN();
   }
 
   @Override
@@ -269,7 +260,6 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
                      .put(fieldNameBytes)
                      .put(AggregatorFactory.STRING_SEPARATOR)
                      .putInt(size)
-                     .put(shouldFinalize ? (byte) 1 : (byte) 0)
                      .put(isInputSketch ? (byte) 1 : (byte) 0)
                      .array();
   }
@@ -289,10 +279,10 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
     if (size != that.size) {
       return false;
     }
-    if (shouldFinalize != that.shouldFinalize) {
+    if (isInputSketch != that.isInputSketch) {
       return false;
     }
-    if (isInputSketch != that.isInputSketch) {
+    if (maxIntermediateOffheapSize != that.maxIntermediateOffheapSize) {
       return false;
     }
     if (!name.equals(that.name)) {
@@ -308,8 +298,8 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
     int result = name.hashCode();
     result = 31 * result + fieldName.hashCode();
     result = 31 * result + size;
-    result = 31 * result + (shouldFinalize ? 1 : 0);
     result = 31 * result + (isInputSketch ? 1 : 0);
+    result = 31 * result + maxIntermediateOffheapSize;
     return result;
   }
 
@@ -320,8 +310,8 @@ public class QuantilesSketchAggregatorFactory extends AggregatorFactory
            "name='" + name + '\'' +
            ", fieldName='" + fieldName + '\'' +
            ", size=" + size +
-           ", shouldFinalize=" + shouldFinalize +
            ", isInputSketch=" + isInputSketch +
+           ", maxIntermediateOffheapSize=" + maxIntermediateOffheapSize +
            '}';
   }
 }
