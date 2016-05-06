@@ -33,6 +33,10 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
+  <properties>
+    <jmh.version>1.9.2</jmh.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.yahoo.datasketches</groupId>
@@ -101,6 +105,19 @@
       <scope>provided</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+      <version>${jmh.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <version>${jmh.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
     <!-- Test Dependencies -->
     <dependency>
       <groupId>junit</groupId>
@@ -116,4 +133,56 @@
     </dependency>
   </dependencies>
 
+
+  <profiles>
+    <profile>
+      <id>benchmark</id>
+
+      <!-- non provided scope -->
+      <dependencies>
+        <dependency>
+          <groupId>io.druid</groupId>
+          <artifactId>druid-api</artifactId>
+          <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>io.druid</groupId>
+          <artifactId>druid-processing</artifactId>
+          <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>org.openjdk.jmh</groupId>
+          <artifactId>jmh-core</artifactId>
+          <version>${jmh.version}</version>
+        </dependency>
+      </dependencies>
+
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <configuration>
+              <descriptorRefs>
+                <descriptorRef>jar-with-dependencies</descriptorRef>
+              </descriptorRefs>
+              <archive>
+                <manifest>
+                  <mainClass>org.openjdk.jmh.Main</mainClass>
+                </manifest>
+              </archive>
+            </configuration>
+            <executions>
+              <execution>
+                <id>jar-with-dependencies</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>single</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
