@@ -52,14 +52,10 @@ public class QuantilesSketchAggregatorFactoryTest
     );
 
     assertAggregatorFactorySerde(
-        makeJson("name", "fieldName", 16, false, true),
-        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, false, 1024)
+        makeJson("name", "fieldName", 16, false, false),
+        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, false, 1)
     );
 
-    assertAggregatorFactorySerde(
-        makeJson("name", "fieldName", 16, true, false),
-        new QuantilesSketchAggregatorFactory("name", "fieldName", 16, true, 4096)
-    );
   }
 
   @Test
