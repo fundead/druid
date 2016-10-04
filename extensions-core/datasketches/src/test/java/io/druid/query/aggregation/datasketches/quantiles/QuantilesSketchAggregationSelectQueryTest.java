@@ -24,7 +24,7 @@ import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
-import io.druid.granularity.QueryGranularity;
+import io.druid.granularity.QueryGranularities;
 import io.druid.query.Result;
 import io.druid.query.aggregation.AggregationTestHelper;
 import io.druid.query.select.SelectResultValue;
@@ -65,7 +65,7 @@ public class QuantilesSketchAggregationSelectQueryTest
         readFileFromClasspathAsString("quantiles/quantiles_test_data_record_parser.json"),
         readFileFromClasspathAsString("quantiles/quantiles_test_data_aggregators.json"),
         0,
-        QueryGranularity.NONE,
+        QueryGranularities.NONE,
         5000,
         readFileFromClasspathAsString("select_query.json")
     );

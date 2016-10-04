@@ -25,7 +25,7 @@ import com.google.common.io.Files;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
 import io.druid.data.input.MapBasedRow;
-import io.druid.granularity.QueryGranularity;
+import io.druid.granularity.QueryGranularities;
 import io.druid.query.aggregation.AggregationTestHelper;
 import org.joda.time.DateTime;
 import org.junit.Assert;
@@ -63,7 +63,7 @@ public class QuantilesSketchAggregationGroupByQueryTest
         readFileFromClasspathAsString("quantiles/quantiles_test_data_record_parser.json"),
         readFileFromClasspathAsString("quantiles/quantiles_test_data_aggregators.json"),
         0,
-        QueryGranularity.NONE,
+        QueryGranularities.NONE,
         5,
         readFileFromClasspathAsString("quantiles/quantiles_test_data_group_by_query.json")
     );
