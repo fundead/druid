@@ -60,6 +60,7 @@ All of these community extensions can be downloaded using *pull-deps* with the c
 |druid-rocketmq|RocketMQ firehose.|[link](../development/extensions-contrib/rocketmq.html)|
 |graphite-emitter|Graphite metrics emitter|[link](../development/extensions-contrib/graphite.html)|
 |statsd-emitter|StatsD metrics emitter|[link](../development/extensions-contrib/statsd.html)|
+|druid-datasketches-experiments|Support for experimental aggregators such as quantiles based on [DataSketches](http://datasketches.github.io/).|[link](../development/extensions-contrib/datasketches-experiments.html)|
 
 ## Promoting Community Extension to Core Extension
 
