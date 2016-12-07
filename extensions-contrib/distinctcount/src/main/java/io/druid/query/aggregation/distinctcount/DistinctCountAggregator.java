@@ -19,24 +19,21 @@
 
 package io.druid.query.aggregation.distinctcount;
 
-import com.metamx.collections.bitmap.MutableBitmap;
+import io.druid.collections.bitmap.MutableBitmap;
 import io.druid.query.aggregation.Aggregator;
 import io.druid.segment.DimensionSelector;
 
 public class DistinctCountAggregator implements Aggregator
 {
 
-  private final String name;
   private final DimensionSelector selector;
   private final MutableBitmap mutableBitmap;
 
   public DistinctCountAggregator(
-      String name,
       DimensionSelector selector,
       MutableBitmap mutableBitmap
   )
   {
-    this.name = name;
     this.selector = selector;
     this.mutableBitmap = mutableBitmap;
   }
@@ -70,7 +67,7 @@ public class DistinctCountAggregator implements Aggregator
   @Override
   public String getName()
   {
-    return name;
+    throw new UnsupportedOperationException("getName is deprecated");
   }
 
   @Override

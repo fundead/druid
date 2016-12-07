@@ -26,15 +26,14 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
-import com.metamx.common.guava.Sequence;
-import com.metamx.common.guava.Sequences;
-
 import io.druid.data.input.Row;
 import io.druid.data.input.impl.CSVParseSpec;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.data.input.impl.StringInputRowParser;
 import io.druid.data.input.impl.TimestampSpec;
 import io.druid.granularity.QueryGranularities;
+import io.druid.java.util.common.guava.Sequence;
+import io.druid.java.util.common.guava.Sequences;
 import io.druid.query.aggregation.AggregationTestHelper;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.CountAggregatorFactory;
@@ -44,6 +43,8 @@ import io.druid.query.dimension.ListFilteredDimensionSpec;
 import io.druid.query.dimension.RegexFilteredDimensionSpec;
 import io.druid.query.filter.SelectorDimFilter;
 import io.druid.query.groupby.GroupByQuery;
+import io.druid.query.groupby.GroupByQueryConfig;
+import io.druid.query.groupby.GroupByQueryRunnerTest;
 import io.druid.query.groupby.GroupByQueryRunnerTestHelper;
 import io.druid.query.spec.LegacySegmentSpec;
 import io.druid.query.topn.TopNQuery;
@@ -60,21 +61,25 @@ import io.druid.segment.Segment;
 import io.druid.segment.TestHelper;
 import io.druid.segment.incremental.IncrementalIndex;
 import io.druid.segment.incremental.OnheapIncrementalIndex;
-
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 /**
  */
+@RunWith(Parameterized.class)
 public class MultiValuedDimensionTest
 {
   private AggregationTestHelper helper;
@@ -84,11 +89,25 @@ public class MultiValuedDimensionTest
 
   private static File persistedSegmentDir;
 
-  public MultiValuedDimensionTest() throws Exception
+  public MultiValuedDimensionTest(
+      final GroupByQueryConfig config
+  ) throws Exception
   {
     helper = AggregationTestHelper.createGroupByQueryAggregationTestHelper(
-        ImmutableList.<Module>of(), null
+        ImmutableList.<Module>of(),
+        config,
+        null
     );
+  }
+
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<?> constructorFeeder() throws IOException
+  {
+    final List<Object[]> constructors = Lists.newArrayList();
+    for (GroupByQueryConfig config : GroupByQueryRunnerTest.testConfigs()) {
+      constructors.add(new Object[]{config});
+    }
+    return constructors;
   }
 
   @BeforeClass
@@ -171,14 +190,6 @@ public class MultiValuedDimensionTest
     );
 
     TestHelper.assertExpectedObjects(expectedResults, Sequences.toList(result, new ArrayList<Row>()), "");
-
-    result = helper.runQueryOnSegmentsObjs(
-        ImmutableList.<Segment>of(
-            new QueryableIndexSegment("sid1", queryableIndex),
-            new IncrementalIndexSegment(incrementalIndex, "sid2")
-        ),
-        query
-    );
   }
 
   @Test

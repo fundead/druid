@@ -23,18 +23,19 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.base.Strings;
+import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.metamx.collections.bitmap.ImmutableBitmap;
-import com.metamx.common.IAE;
-import com.metamx.common.UOE;
-import com.metamx.common.guava.CloseQuietly;
-import com.metamx.common.guava.Sequence;
-import com.metamx.common.guava.Sequences;
+import com.google.common.io.Closer;
+
+import io.druid.collections.bitmap.ImmutableBitmap;
 import io.druid.granularity.QueryGranularity;
+import io.druid.java.util.common.guava.Sequence;
+import io.druid.java.util.common.guava.Sequences;
+import io.druid.math.expr.Expr;
+import io.druid.math.expr.Parser;
 import io.druid.query.QueryInterruptedException;
 import io.druid.query.dimension.DefaultDimensionSpec;
 import io.druid.query.dimension.DimensionSpec;
@@ -59,6 +60,7 @@ import io.druid.segment.data.Offset;
 import io.druid.segment.filter.AndFilter;
 import io.druid.segment.filter.BooleanValueMatcher;
 import io.druid.segment.filter.Filters;
+import it.unimi.dsi.fastutil.ints.IntIterators;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.roaringbitmap.IntIterator;
@@ -66,7 +68,6 @@ import org.roaringbitmap.IntIterator;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -135,26 +136,16 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
   @Override
   public DateTime getMinTime()
   {
-    GenericColumn column = null;
-    try {
-      column = index.getColumn(Column.TIME_COLUMN_NAME).getGenericColumn();
+    try (final GenericColumn column = index.getColumn(Column.TIME_COLUMN_NAME).getGenericColumn()) {
       return new DateTime(column.getLongSingleValueRow(0));
-    }
-    finally {
-      CloseQuietly.close(column);
     }
   }
 
   @Override
   public DateTime getMaxTime()
   {
-    GenericColumn column = null;
-    try {
-      column = index.getColumn(Column.TIME_COLUMN_NAME).getGenericColumn();
+    try (final GenericColumn column = index.getColumn(Column.TIME_COLUMN_NAME).getGenericColumn()) {
       return new DateTime(column.getLongSingleValueRow(column.length() - 1));
-    }
-    finally {
-      CloseQuietly.close(column);
     }
   }
 
@@ -202,8 +193,9 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
   public String getColumnTypeName(String columnName)
   {
     final Column column = index.getColumn(columnName);
-    final ComplexColumn complexColumn = column.getComplexColumn();
-    return complexColumn != null ? complexColumn.getTypeName() : column.getCapabilities().getType().toString();
+    try (final ComplexColumn complexColumn = column.getComplexColumn()) {
+      return complexColumn != null ? complexColumn.getTypeName() : column.getCapabilities().getType().toString();
+    }
   }
 
   @Override
@@ -284,13 +276,10 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
       if (preFilters.size() == 0) {
         offset = new NoFilterOffset(0, index.getNumRows(), descending);
       } else {
-        List<ImmutableBitmap> bitmaps = Lists.newArrayList();
-        for (Filter prefilter : preFilters) {
-          bitmaps.add(prefilter.getBitmapIndex(selector));
-        }
+        // Use AndFilter.getBitmapIndex to intersect the preFilters to get its short-circuiting behavior.
         offset = new BitmapOffset(
             selector.getBitmapFactory(),
-            selector.getBitmapFactory().intersection(bitmaps),
+            AndFilter.getBitmapIndex(selector, preFilters),
             descending
         );
       }
@@ -382,10 +371,12 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
 
       final Map<String, DictionaryEncodedColumn> dictionaryColumnCache = Maps.newHashMap();
       final Map<String, GenericColumn> genericColumnCache = Maps.newHashMap();
-      final Map<String, ComplexColumn> complexColumnCache = Maps.newHashMap();
       final Map<String, Object> objectColumnCache = Maps.newHashMap();
 
       final GenericColumn timestamps = index.getColumn(Column.TIME_COLUMN_NAME).getGenericColumn();
+
+      final Closer closer = Closer.create();
+      closer.register(timestamps);
 
       Iterable<Long> iterable = gran.iterable(interval.getStartMillis(), interval.getEndMillis());
       if (descending) {
@@ -471,6 +462,7 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                       DictionaryEncodedColumn<String> cachedColumn = dictionaryColumnCache.get(dimension);
                       if (cachedColumn == null) {
                         cachedColumn = columnDesc.getDictionaryEncoding();
+                        closer.register(cachedColumn);
                         dictionaryColumnCache.put(dimension, cachedColumn);
                       }
 
@@ -535,9 +527,9 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                               }
 
                               @Override
-                              public Iterator<Integer> iterator()
+                              public it.unimi.dsi.fastutil.ints.IntIterator iterator()
                               {
-                                return Iterators.singletonIterator(column.getSingleValueRow(cursorOffset.getOffset()));
+                                return IntIterators.singleton(column.getSingleValueRow(cursorOffset.getOffset()));
                               }
 
                               @Override
@@ -592,6 +584,7 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                         if (holder != null && (holder.getCapabilities().getType() == ValueType.FLOAT
                                                || holder.getCapabilities().getType() == ValueType.LONG)) {
                           cachedMetricVals = holder.getGenericColumn();
+                          closer.register(cachedMetricVals);
                           genericColumnCache.put(columnName, cachedMetricVals);
                         }
                       }
@@ -628,6 +621,7 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                         if (holder != null && (holder.getCapabilities().getType() == ValueType.LONG
                                                || holder.getCapabilities().getType() == ValueType.FLOAT)) {
                           cachedMetricVals = holder.getGenericColumn();
+                          closer.register(cachedMetricVals);
                           genericColumnCache.put(columnName, cachedMetricVals);
                         }
                       }
@@ -676,6 +670,7 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                         }
 
                         if (cachedColumnVals != null) {
+                          closer.register((Closeable) cachedColumnVals);
                           objectColumnCache.put(column, cachedColumnVals);
                         }
                       }
@@ -808,6 +803,61 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                     }
 
                     @Override
+                    public NumericColumnSelector makeMathExpressionSelector(String expression)
+                    {
+                      final Expr parsed = Parser.parse(expression);
+                      final List<String> required = Parser.findRequiredBindings(parsed);
+
+                      final Map<String, Supplier<Number>> values = Maps.newHashMapWithExpectedSize(required.size());
+                      for (String columnName : index.getColumnNames()) {
+                        if (!required.contains(columnName)) {
+                          continue;
+                        }
+                        final GenericColumn column = index.getColumn(columnName).getGenericColumn();
+                        if (column == null) {
+                          continue;
+                        }
+                        closer.register(column);
+                        if (column.getType() == ValueType.FLOAT) {
+                          values.put(
+                              columnName, new Supplier<Number>()
+                              {
+                                @Override
+                                public Number get()
+                                {
+                                  return column.getFloatSingleValueRow(cursorOffset.getOffset());
+                                }
+                              }
+                          );
+                        } else if (column.getType() == ValueType.LONG) {
+                          values.put(
+                              columnName, new Supplier<Number>()
+                              {
+                                @Override
+                                public Number get()
+                                {
+                                  return column.getLongSingleValueRow(cursorOffset.getOffset());
+                                }
+                              }
+                          );
+                        } else {
+                          throw new UnsupportedOperationException(
+                              "Not supported type " + column.getType() + " for column " + columnName
+                          );
+                        }
+                      }
+                      final Expr.ObjectBinding binding = Parser.withSuppliers(values);
+                      return new NumericColumnSelector()
+                      {
+                        @Override
+                        public Number get()
+                        {
+                          return parsed.eval(binding).numericValue();
+                        }
+                      };
+                    }
+
+                    @Override
                     public ColumnCapabilities getColumnCapabilities(String columnName)
                     {
                       return getColumnCapabilites(index, columnName);
@@ -872,6 +922,7 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                       );
 
                       final ValueMatcher filterMatcher;
+
                       {
                         if (postFilter instanceof BooleanFilter) {
                           filterMatcher = ((BooleanFilter) postFilter).makeMatcher(
@@ -950,31 +1001,11 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                       }
                     };
                   }
+
                 }
               }
           ),
-          new Closeable()
-          {
-            @Override
-            public void close() throws IOException
-            {
-              CloseQuietly.close(timestamps);
-              for (DictionaryEncodedColumn column : dictionaryColumnCache.values()) {
-                CloseQuietly.close(column);
-              }
-              for (GenericColumn column : genericColumnCache.values()) {
-                CloseQuietly.close(column);
-              }
-              for (ComplexColumn complexColumn : complexColumnCache.values()) {
-                CloseQuietly.close(complexColumn);
-              }
-              for (Object column : objectColumnCache.values()) {
-                if (column instanceof Closeable) {
-                  CloseQuietly.close((Closeable) column);
-                }
-              }
-            }
-          }
+          closer
       );
     }
   }
@@ -1127,12 +1158,13 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
     // Use an iterator-based implementation, ImmutableBitmap.get(index) works differently for Concise and Roaring.
     // ImmutableConciseSet.get(index) is also inefficient, it performs a linear scan on each call
     @Override
-    public ValueMatcher makeRowOffsetMatcher(final ImmutableBitmap rowBitmap) {
+    public ValueMatcher makeRowOffsetMatcher(final ImmutableBitmap rowBitmap)
+    {
       final IntIterator iter = descending ?
                                BitmapOffset.getReverseBitmapOffsetIterator(rowBitmap) :
                                rowBitmap.iterator();
 
-      if(!iter.hasNext()) {
+      if (!iter.hasNext()) {
         return new BooleanValueMatcher(false);
       }
 
@@ -1221,7 +1253,8 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
     }
 
     @Override
-    public Offset clone() {
+    public Offset clone()
+    {
       throw new IllegalStateException("clone");
     }
   }
@@ -1295,7 +1328,7 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
   {
     private final int rowCount;
     private final boolean descending;
-    private volatile int currentOffset;
+    private int currentOffset;
 
     NoFilterOffset(int currentOffset, int rowCount, boolean descending)
     {

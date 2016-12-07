@@ -21,12 +21,11 @@ package io.druid.tasklogs;
 
 import com.google.common.base.Optional;
 import com.google.common.io.ByteSource;
-import com.google.common.io.InputSupplier;
-import com.metamx.common.logger.Logger;
+
+import io.druid.java.util.common.logger.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 
 public class NoopTaskLogs implements TaskLogs
 {
@@ -42,5 +41,11 @@ public class NoopTaskLogs implements TaskLogs
   public void pushTaskLog(String taskid, File logFile) throws IOException
   {
     log.info("Not pushing logs for task: %s", taskid);
+  }
+
+  @Override
+  public void killAll() throws IOException
+  {
+    log.info("Noop: No task logs are deleted.");
   }
 }

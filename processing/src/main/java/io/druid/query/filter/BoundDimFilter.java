@@ -20,17 +20,15 @@
 package io.druid.query.filter;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
-import com.google.common.primitives.Longs;
-import com.metamx.common.StringUtils;
+import io.druid.common.guava.GuavaUtils;
+import io.druid.java.util.common.StringUtils;
 import io.druid.query.extraction.ExtractionFn;
 import io.druid.query.ordering.StringComparator;
 import io.druid.query.ordering.StringComparators;
@@ -277,6 +275,42 @@ public class BoundDimFilter implements DimFilter
     return result;
   }
 
+  @Override
+  public String toString()
+  {
+    final StringBuilder builder = new StringBuilder();
+
+    if (lower != null) {
+      builder.append(lower);
+      if (lowerStrict) {
+        builder.append(" < ");
+      } else {
+        builder.append(" <= ");
+      }
+    }
+
+    if (extractionFn != null) {
+      builder.append(String.format("%s(%s)", extractionFn, dimension));
+    } else {
+      builder.append(dimension);
+    }
+
+    if (!ordering.equals(StringComparators.LEXICOGRAPHIC)) {
+      builder.append(String.format(" as %s", ordering.toString()));
+    }
+
+    if (upper != null) {
+      if (upperStrict) {
+        builder.append(" < ");
+      } else {
+        builder.append(" <= ");
+      }
+      builder.append(upper);
+    }
+
+    return builder.toString();
+  }
+
   private Supplier<DruidLongPredicate> makeLongPredicateSupplier()
   {
     return new Supplier<DruidLongPredicate>()
@@ -335,7 +369,7 @@ public class BoundDimFilter implements DimFilter
             return;
           }
 
-          Long lowerLong = Longs.tryParse(Strings.nullToEmpty(lower));
+          Long lowerLong = GuavaUtils.tryParseLong(lower);
           if (hasLowerBound() && lowerLong != null) {
             hasLowerLongBoundVolatile = true;
             lowerLongBoundVolatile = lowerLong;
@@ -343,7 +377,7 @@ public class BoundDimFilter implements DimFilter
             hasLowerLongBoundVolatile = false;
           }
 
-          Long upperLong = Longs.tryParse(Strings.nullToEmpty(upper));
+          Long upperLong = GuavaUtils.tryParseLong(upper);
           if (hasUpperBound() && upperLong != null) {
             hasUpperLongBoundVolatile = true;
             upperLongBoundVolatile = upperLong;

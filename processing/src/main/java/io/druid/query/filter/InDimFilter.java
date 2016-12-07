@@ -30,8 +30,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
-import com.google.common.primitives.Longs;
-import com.metamx.common.StringUtils;
+import io.druid.common.guava.GuavaUtils;
+import io.druid.java.util.common.StringUtils;
 import io.druid.query.extraction.ExtractionFn;
 import io.druid.query.lookup.LookupExtractionFn;
 import io.druid.query.lookup.LookupExtractor;
@@ -254,7 +254,7 @@ public class InDimFilter implements DimFilter
 
           List<Long> longs = new ArrayList<>();
           for (String value : values) {
-            Long longValue = Longs.tryParse(value);
+            Long longValue = GuavaUtils.tryParseLong(value);
             if (longValue != null) {
               longs.add(longValue);
             }

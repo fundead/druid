@@ -107,13 +107,13 @@ public class HttpClientModule implements Module
       final HttpClientConfig.Builder builder = HttpClientConfig
           .builder()
           .withNumConnections(config.getNumConnections())
-          .withReadTimeout(config.getReadTimeout());
+          .withReadTimeout(config.getReadTimeout())
+          .withWorkerCount(config.getNumMaxThreads());
 
       if (getSslContextBinding() != null) {
         builder.withSslContext(getSslContextBinding().getProvider().get());
       }
-
-      return HttpClientInit.createClient(builder.build(), getLifecycleProvider().get());
+      return HttpClientInit.createClient(builder.build(), LifecycleUtils.asMmxLifecycle(getLifecycleProvider().get()));
     }
   }
 }

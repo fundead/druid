@@ -40,6 +40,7 @@ import io.druid.segment.ColumnSelectorFactory;
 import io.druid.segment.DimensionSelector;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.LongColumnSelector;
+import io.druid.segment.NumericColumnSelector;
 import io.druid.segment.ObjectColumnSelector;
 import io.druid.segment.column.ColumnCapabilities;
 import io.druid.segment.column.ColumnCapabilitiesImpl;
@@ -73,8 +74,6 @@ public class FilteredAggregatorTest
     FilteredAggregator agg = (FilteredAggregator) factory.factorize(
      makeColumnSelector(selector)
     );
-
-    Assert.assertEquals("billy", agg.getName());
 
     double expectedFirst = new Float(values[0]).doubleValue();
     double expectedSecond = new Float(values[1]).doubleValue() + expectedFirst;
@@ -184,6 +183,12 @@ public class FilteredAggregatorTest
         }
         return caps;
       }
+
+      @Override
+      public NumericColumnSelector makeMathExpressionSelector(String expression)
+      {
+        throw new UnsupportedOperationException();
+      }
     };
   }
 
@@ -227,8 +232,6 @@ public class FilteredAggregatorTest
     FilteredAggregator agg = (FilteredAggregator) factory.factorize(
         makeColumnSelector(selector)
     );
-
-    Assert.assertEquals("billy", agg.getName());
 
     double expectedFirst = new Float(values[0]).doubleValue();
     double expectedSecond = new Float(values[1]).doubleValue() + expectedFirst;
@@ -351,8 +354,6 @@ public class FilteredAggregatorTest
     FilteredAggregator agg = (FilteredAggregator) factory.factorize(
         makeColumnSelector(selector)
     );
-
-    Assert.assertEquals("billy", agg.getName());
 
     double expectedFirst = new Float(values[0]).doubleValue();
     double expectedSecond = new Float(values[1]).doubleValue() + expectedFirst;

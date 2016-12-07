@@ -21,9 +21,10 @@ package io.druid.server.lookup.namespace;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import com.metamx.common.lifecycle.Lifecycle;
+
 import io.druid.data.SearchableVersionedDataFinder;
 import io.druid.jackson.DefaultObjectMapper;
+import io.druid.java.util.common.lifecycle.Lifecycle;
 import io.druid.query.lookup.namespace.ExtractionNamespace;
 import io.druid.query.lookup.namespace.ExtractionNamespaceCacheFactory;
 import io.druid.query.lookup.namespace.JDBCExtractionNamespace;
@@ -104,7 +105,7 @@ public class NamespacedExtractorModuleTest
         null
     );
     Map<String, String> map = new HashMap<>();
-    factory.getCachePopulator(namespaceID, namespace, null, map).call();
+    factory.populateCache(namespaceID, namespace, null, map);
     Assert.assertEquals("bar", map.get("foo"));
     Assert.assertEquals(null, map.get("baz"));
     cacheManager.delete(namespaceID);

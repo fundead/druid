@@ -27,9 +27,10 @@ import com.google.common.io.Closer;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.metamx.common.lifecycle.Lifecycle;
-import com.metamx.common.logger.Logger;
+
 import io.druid.concurrent.Execs;
+import io.druid.java.util.common.lifecycle.Lifecycle;
+import io.druid.java.util.common.logger.Logger;
 import io.druid.metadata.TestDerbyConnector;
 import io.druid.query.lookup.namespace.ExtractionNamespace;
 import io.druid.query.lookup.namespace.ExtractionNamespaceCacheFactory;
@@ -192,39 +193,31 @@ public class JDBCExtractionNamespaceTest
                     new JDBCExtractionNamespaceCacheFactory()
                     {
                       @Override
-                      public Callable<String> getCachePopulator(
+                      public String populateCache(
                           final String id,
                           final JDBCExtractionNamespace namespace,
                           final String lastVersion,
                           final Map<String, String> cache
-                      )
+                      ) throws Exception
                       {
-                        final Callable<String> cachePopulator = super.getCachePopulator(
-                            id,
-                            namespace,
-                            lastVersion,
-                            cache
-                        );
-                        return new Callable<String>()
-                        {
-                          @Override
-                          public String call() throws Exception
-                          {
-                            updateLock.lockInterruptibly();
-                            try {
-                              log.debug("Running cache populator");
-                              try {
-                                return cachePopulator.call();
-                              }
-                              finally {
-                                updates.incrementAndGet();
-                              }
-                            }
-                            finally {
-                              updateLock.unlock();
-                            }
+                        updateLock.lockInterruptibly();
+                        try {
+                          log.debug("Running cache populator");
+                          try {
+                            return super.populateCache(
+                                id,
+                                namespace,
+                                lastVersion,
+                                cache
+                            );
                           }
-                        };
+                          finally {
+                            updates.incrementAndGet();
+                          }
+                        }
+                        finally {
+                          updateLock.unlock();
+                        }
                       }
                     }
                 )

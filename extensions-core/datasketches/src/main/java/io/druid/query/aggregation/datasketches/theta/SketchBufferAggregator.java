@@ -19,7 +19,6 @@
 
 package io.druid.query.aggregation.datasketches.theta;
 
-import com.metamx.common.logger.Logger;
 import com.yahoo.sketches.Family;
 import com.yahoo.sketches.memory.Memory;
 import com.yahoo.sketches.memory.MemoryRegion;
@@ -35,8 +34,6 @@ import java.util.Map;
 
 public class SketchBufferAggregator implements BufferAggregator
 {
-  private static final Logger logger = new Logger(SketchAggregator.class);
-
   private final ObjectColumnSelector selector;
   private final int size;
   private final int maxIntermediateSize;
@@ -83,7 +80,7 @@ public class SketchBufferAggregator implements BufferAggregator
     //however, advantage of ordered sketch is that they are faster to "union" later
     //given that results from the aggregator will be combined further, it is better
     //to return the ordered sketch here
-    return getUnion(buf, position).getResult(true, null);
+    return SketchHolder.of(getUnion(buf, position).getResult(true, null));
   }
 
   //Note that this is not threadsafe and I don't think it needs to be

@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
-import com.metamx.common.Granularity;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.data.input.impl.InputRowParser;
 import io.druid.data.input.impl.TimeAndDimsParseSpec;
@@ -39,6 +38,7 @@ import io.druid.indexer.HadoopyShardSpec;
 import io.druid.indexer.IndexGeneratorJob;
 import io.druid.indexer.JobHelper;
 import io.druid.indexer.Jobby;
+import io.druid.java.util.common.Granularity;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.LongSumAggregatorFactory;
 import io.druid.query.aggregation.hyperloglog.HyperUniquesAggregatorFactory;
@@ -216,6 +216,7 @@ public class OrcIndexGeneratorJobTest
                 null,
                 true,
                 null,
+                false,
                 false
             )
         )
@@ -301,11 +302,11 @@ public class OrcIndexGeneratorJobTest
     }
   }
 
-  private Map<DateTime, List<HadoopyShardSpec>> loadShardSpecs(
+  private Map<Long, List<HadoopyShardSpec>> loadShardSpecs(
       Integer[][][] shardInfoForEachShard
   )
   {
-    Map<DateTime, List<HadoopyShardSpec>> shardSpecs = Maps.newTreeMap(DateTimeComparator.getInstance());
+    Map<Long, List<HadoopyShardSpec>> shardSpecs = Maps.newTreeMap(DateTimeComparator.getInstance());
     int shardCount = 0;
     int segmentNum = 0;
     for (Interval segmentGranularity : config.getSegmentGranularIntervals().get()) {
@@ -318,7 +319,7 @@ public class OrcIndexGeneratorJobTest
         actualSpecs.add(new HadoopyShardSpec(spec, shardCount++));
       }
 
-      shardSpecs.put(segmentGranularity.getStart(), actualSpecs);
+      shardSpecs.put(segmentGranularity.getStartMillis(), actualSpecs);
     }
 
     return shardSpecs;

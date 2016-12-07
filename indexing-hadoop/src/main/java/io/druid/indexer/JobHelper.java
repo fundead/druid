@@ -27,12 +27,13 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
 import com.google.common.io.OutputSupplier;
-import com.metamx.common.FileUtils;
-import com.metamx.common.IAE;
-import com.metamx.common.ISE;
-import com.metamx.common.RetryUtils;
-import com.metamx.common.logger.Logger;
+
 import io.druid.indexer.updater.HadoopDruidConverterConfig;
+import io.druid.java.util.common.FileUtils;
+import io.druid.java.util.common.IAE;
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.RetryUtils;
+import io.druid.java.util.common.logger.Logger;
 import io.druid.segment.ProgressIndicator;
 import io.druid.segment.SegmentUtils;
 import io.druid.segment.loading.DataSegmentPusherUtil;
@@ -419,10 +420,16 @@ public class JobHelper
     switch (outputFS.getScheme()) {
       case "hdfs":
       case "viewfs":
-      case "gs":
         loadSpec = ImmutableMap.<String, Object>of(
             "type", "hdfs",
             "path", indexOutURI.toString()
+        );
+        break;
+      case "gs":
+        loadSpec = ImmutableMap.<String, Object>of(
+            "type", "google",
+            "bucket", indexOutURI.getHost(),
+            "path", indexOutURI.getPath().substring(1) // remove the leading "/"
         );
         break;
       case "s3":
@@ -729,6 +736,8 @@ public class JobHelper
       segmentLocURI = URI.create(String.format("s3n://%s/%s", loadSpec.get("bucket"), loadSpec.get("key")));
     } else if ("hdfs".equals(type)) {
       segmentLocURI = URI.create(loadSpec.get("path").toString());
+    } else if ("google".equals(type)) {
+      segmentLocURI = URI.create(String.format("gs://%s/%s", loadSpec.get("bucket"), loadSpec.get("path")));
     } else if ("local".equals(type)) {
       try {
         segmentLocURI = new URI("file", null, loadSpec.get("path").toString(), null, null);

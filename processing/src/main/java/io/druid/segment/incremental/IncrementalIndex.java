@@ -20,6 +20,7 @@
 package io.druid.segment.incremental;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Enums;
 import com.google.common.base.Function;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
@@ -30,8 +31,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
-import com.metamx.common.IAE;
-import com.metamx.common.ISE;
 import io.druid.data.input.InputRow;
 import io.druid.data.input.MapBasedRow;
 import io.druid.data.input.Row;
@@ -39,6 +38,11 @@ import io.druid.data.input.impl.DimensionSchema;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.data.input.impl.SpatialDimensionSchema;
 import io.druid.granularity.QueryGranularity;
+import io.druid.math.expr.Evals;
+import io.druid.math.expr.Expr;
+import io.druid.math.expr.Parser;
+import io.druid.java.util.common.IAE;
+import io.druid.java.util.common.ISE;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.PostAggregator;
 import io.druid.query.dimension.DimensionSpec;
@@ -51,6 +55,7 @@ import io.druid.segment.DimensionSelector;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.LongColumnSelector;
 import io.druid.segment.Metadata;
+import io.druid.segment.NumericColumnSelector;
 import io.druid.segment.ObjectColumnSelector;
 import io.druid.segment.column.Column;
 import io.druid.segment.column.ColumnCapabilities;
@@ -60,6 +65,8 @@ import io.druid.segment.data.IndexedInts;
 import io.druid.segment.serde.ComplexMetricExtractor;
 import io.druid.segment.serde.ComplexMetricSerde;
 import io.druid.segment.serde.ComplexMetrics;
+import it.unimi.dsi.fastutil.ints.IntIterator;
+import it.unimi.dsi.fastutil.ints.IntIterators;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
@@ -166,13 +173,10 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
           }
         };
 
-        if (!deserializeComplexMetrics) {
+        if ((Enums.getIfPresent(ValueType.class, typeName.toUpperCase()).isPresent() && !typeName.equalsIgnoreCase(ValueType.COMPLEX.name()))
+            || !deserializeComplexMetrics) {
           return rawColumnSelector;
         } else {
-          if (typeName.equals("float")) {
-            return rawColumnSelector;
-          }
-
           final ComplexMetricSerde serde = ComplexMetrics.getSerdeForType(typeName);
           if (serde == null) {
             throw new ISE("Don't know how to handle type[%s]", typeName);
@@ -227,31 +231,29 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
           public IndexedInts getRow()
           {
             final List<String> dimensionValues = in.get().getDimension(dimension);
-            final ArrayList<Integer> vals = Lists.newArrayList();
-            if (dimensionValues != null) {
-              for (int i = 0; i < dimensionValues.size(); ++i) {
-                vals.add(i);
-              }
-            }
+            final int dimensionValuesSize = dimensionValues != null ? dimensionValues.size() : 0;
 
             return new IndexedInts()
             {
               @Override
               public int size()
               {
-                return vals.size();
+                return dimensionValuesSize;
               }
 
               @Override
               public int get(int index)
               {
-                return vals.get(index);
+                if (index < 0 || index >= dimensionValuesSize) {
+                  throw new IndexOutOfBoundsException("index: " + index);
+                }
+                return index;
               }
 
               @Override
-              public Iterator<Integer> iterator()
+              public IntIterator iterator()
               {
-                return vals.iterator();
+                return IntIterators.fromTo(0, dimensionValuesSize);
               }
 
               @Override
@@ -288,6 +290,38 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
               throw new UnsupportedOperationException("cannot perform lookup when applying an extraction function");
             }
             return in.get().getDimension(dimension).indexOf(name);
+          }
+        };
+      }
+
+      @Override
+      public NumericColumnSelector makeMathExpressionSelector(String expression)
+      {
+        final Expr parsed = Parser.parse(expression);
+
+        final List<String> required = Parser.findRequiredBindings(parsed);
+        final Map<String, Supplier<Number>> values = Maps.newHashMapWithExpectedSize(required.size());
+
+        for (final String columnName : required) {
+          values.put(
+              columnName, new Supplier<Number>()
+              {
+                @Override
+                public Number get()
+                {
+                  return Evals.toNumber(in.get().getRaw(columnName));
+                }
+              }
+          );
+        }
+        final Expr.ObjectBinding binding = Parser.withSuppliers(values);
+
+        return new NumericColumnSelector()
+        {
+          @Override
+          public Number get()
+          {
+            return parsed.eval(binding).numericValue();
           }
         };
       }
@@ -373,7 +407,11 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       if (dimSchema.getTypeName().equals(DimensionSchema.SPATIAL_TYPE_NAME)) {
         capabilities.setHasSpatialIndexes(true);
       } else {
-        DimensionHandler handler = DimensionHandlerUtil.getHandlerFromCapabilities(dimName, capabilities);
+        DimensionHandler handler = DimensionHandlerUtil.getHandlerFromCapabilities(
+            dimName,
+            capabilities,
+            dimSchema.getMultiValueHandling()
+        );
         addNewDimension(dimName, capabilities, handler);
       }
       columnCapabilities.put(dimName, capabilities);
@@ -464,11 +502,6 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     return TYPE_MAP.get(singleVal.getClass());
   }
 
-  public Map<String, DimensionDesc> getDimensionDescs()
-  {
-    return dimensionDescs;
-  }
-
   public Map<String, ColumnCapabilitiesImpl> getColumnCapabilities()
   {
     return columnCapabilities;
@@ -520,7 +553,6 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       for (String dimension : rowDimensions) {
         boolean wasNewDim = false;
         ColumnCapabilitiesImpl capabilities;
-        ValueType valType = null;
         DimensionDesc desc = dimensionDescs.get(dimension);
         if (desc != null) {
           capabilities = desc.getCapabilities();
@@ -535,7 +567,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
             capabilities.setHasBitmapIndexes(true);
             columnCapabilities.put(dimension, capabilities);
           }
-          DimensionHandler handler = DimensionHandlerUtil.getHandlerFromCapabilities(dimension, capabilities);
+          DimensionHandler handler = DimensionHandlerUtil.getHandlerFromCapabilities(dimension, capabilities, null);
           desc = addNewDimension(dimension, capabilities, handler);
         }
         DimensionHandler handler = desc.getHandler();
@@ -715,7 +747,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
         if (dimensionDescs.get(dim) == null) {
           ColumnCapabilitiesImpl capabilities = oldColumnCapabilities.get(dim);
           columnCapabilities.put(dim, capabilities);
-          DimensionHandler handler = DimensionHandlerUtil.getHandlerFromCapabilities(dim, capabilities);
+          DimensionHandler handler = DimensionHandlerUtil.getHandlerFromCapabilities(dim, capabilities, null);
           addNewDimension(dim, capabilities, handler);
         }
       }
@@ -816,7 +848,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
                     continue;
                   }
                   final DimensionIndexer indexer = dimensionDesc.getIndexer();
-                  Object rowVals = indexer.convertUnsortedEncodedArrayToActualArrayOrList(dim, true);
+                  Object rowVals = indexer.convertUnsortedEncodedArrayToActualArrayOrList(dim, DimensionIndexer.LIST);
                   theVals.put(dimensionName, rowVals);
                 }
 

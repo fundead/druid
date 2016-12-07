@@ -26,8 +26,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.metamx.common.Granularity;
-import com.metamx.common.ISE;
+
 import io.druid.data.input.impl.DimensionSchema;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.data.input.impl.JSONParseSpec;
@@ -59,6 +58,8 @@ import io.druid.indexing.overlord.TaskRunnerWorkItem;
 import io.druid.indexing.overlord.TaskStorage;
 import io.druid.indexing.overlord.supervisor.SupervisorReport;
 import io.druid.jackson.DefaultObjectMapper;
+import io.druid.java.util.common.Granularity;
+import io.druid.java.util.common.ISE;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.CountAggregatorFactory;
 import io.druid.segment.indexing.DataSchema;
@@ -174,6 +175,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
         null,
         true,
         false,
+        null,
         null,
         numThreads,
         TEST_CHAT_THREADS,
@@ -1632,6 +1634,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
             dataSchema,
             tuningConfig,
             kafkaSupervisorIOConfig,
+            null,
             taskStorage,
             taskMaster,
             indexerMetadataStorageCoordinator,
@@ -1696,7 +1699,8 @@ public class KafkaSupervisorTest extends EasyMockSupport
             ImmutableMap.<String, String>of(),
             true,
             false,
-            minimumMessageTime
+            minimumMessageTime,
+            null
         ),
         ImmutableMap.<String, Object>of(),
         null

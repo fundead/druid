@@ -39,11 +39,11 @@ import java.util.Map;
 public class HadoopTuningConfig implements TuningConfig
 {
   private static final PartitionsSpec DEFAULT_PARTITIONS_SPEC = HashedPartitionsSpec.makeDefaultHashedPartitionsSpec();
-  private static final Map<DateTime, List<HadoopyShardSpec>> DEFAULT_SHARD_SPECS = ImmutableMap.of();
+  private static final Map<Long, List<HadoopyShardSpec>> DEFAULT_SHARD_SPECS = ImmutableMap.of();
   private static final IndexSpec DEFAULT_INDEX_SPEC = new IndexSpec();
   private static final int DEFAULT_ROW_FLUSH_BOUNDARY = 75000;
   private static final boolean DEFAULT_USE_COMBINER = false;
-  private static final Boolean DEFAULT_BUILD_V9_DIRECTLY = Boolean.FALSE;
+  private static final Boolean DEFAULT_BUILD_V9_DIRECTLY = Boolean.TRUE;
   private static final int DEFAULT_NUM_BACKGROUND_PERSIST_THREADS = 0;
 
   public static HadoopTuningConfig makeDefaultTuningConfig()
@@ -65,6 +65,7 @@ public class HadoopTuningConfig implements TuningConfig
         null,
         DEFAULT_BUILD_V9_DIRECTLY,
         DEFAULT_NUM_BACKGROUND_PERSIST_THREADS,
+        false,
         false
     );
   }
@@ -72,7 +73,7 @@ public class HadoopTuningConfig implements TuningConfig
   private final String workingPath;
   private final String version;
   private final PartitionsSpec partitionsSpec;
-  private final Map<DateTime, List<HadoopyShardSpec>> shardSpecs;
+  private final Map<Long, List<HadoopyShardSpec>> shardSpecs;
   private final IndexSpec indexSpec;
   private final int rowFlushBoundary;
   private final boolean leaveIntermediate;
@@ -85,13 +86,14 @@ public class HadoopTuningConfig implements TuningConfig
   private final Boolean buildV9Directly;
   private final int numBackgroundPersistThreads;
   private final boolean forceExtendableShardSpecs;
+  private final boolean useExplicitVersion;
 
   @JsonCreator
   public HadoopTuningConfig(
       final @JsonProperty("workingPath") String workingPath,
       final @JsonProperty("version") String version,
       final @JsonProperty("partitionsSpec") PartitionsSpec partitionsSpec,
-      final @JsonProperty("shardSpecs") Map<DateTime, List<HadoopyShardSpec>> shardSpecs,
+      final @JsonProperty("shardSpecs") Map<Long, List<HadoopyShardSpec>> shardSpecs,
       final @JsonProperty("indexSpec") IndexSpec indexSpec,
       final @JsonProperty("maxRowsInMemory") Integer maxRowsInMemory,
       final @JsonProperty("leaveIntermediate") boolean leaveIntermediate,
@@ -105,7 +107,8 @@ public class HadoopTuningConfig implements TuningConfig
       final @JsonProperty("rowFlushBoundary") Integer maxRowsInMemoryCOMPAT,
       final @JsonProperty("buildV9Directly") Boolean buildV9Directly,
       final @JsonProperty("numBackgroundPersistThreads") Integer numBackgroundPersistThreads,
-      final @JsonProperty("forceExtendableShardSpecs") boolean forceExtendableShardSpecs
+      final @JsonProperty("forceExtendableShardSpecs") boolean forceExtendableShardSpecs,
+      final @JsonProperty("useExplicitVersion") boolean useExplicitVersion
   )
   {
     this.workingPath = workingPath;
@@ -131,6 +134,7 @@ public class HadoopTuningConfig implements TuningConfig
                                        : numBackgroundPersistThreads;
     this.forceExtendableShardSpecs = forceExtendableShardSpecs;
     Preconditions.checkArgument(this.numBackgroundPersistThreads >= 0, "Not support persistBackgroundCount < 0");
+    this.useExplicitVersion = useExplicitVersion;
   }
 
   @JsonProperty
@@ -152,7 +156,7 @@ public class HadoopTuningConfig implements TuningConfig
   }
 
   @JsonProperty
-  public Map<DateTime, List<HadoopyShardSpec>> getShardSpecs()
+  public Map<Long, List<HadoopyShardSpec>> getShardSpecs()
   {
     return shardSpecs;
   }
@@ -229,6 +233,12 @@ public class HadoopTuningConfig implements TuningConfig
     return forceExtendableShardSpecs;
   }
 
+  @JsonProperty
+  public boolean isUseExplicitVersion()
+  {
+    return useExplicitVersion;
+  }
+
   public HadoopTuningConfig withWorkingPath(String path)
   {
     return new HadoopTuningConfig(
@@ -248,7 +258,8 @@ public class HadoopTuningConfig implements TuningConfig
         null,
         buildV9Directly,
         numBackgroundPersistThreads,
-        forceExtendableShardSpecs
+        forceExtendableShardSpecs,
+        useExplicitVersion
     );
   }
 
@@ -271,11 +282,12 @@ public class HadoopTuningConfig implements TuningConfig
         null,
         buildV9Directly,
         numBackgroundPersistThreads,
-        forceExtendableShardSpecs
+        forceExtendableShardSpecs,
+        useExplicitVersion
     );
   }
 
-  public HadoopTuningConfig withShardSpecs(Map<DateTime, List<HadoopyShardSpec>> specs)
+  public HadoopTuningConfig withShardSpecs(Map<Long, List<HadoopyShardSpec>> specs)
   {
     return new HadoopTuningConfig(
         workingPath,
@@ -294,7 +306,8 @@ public class HadoopTuningConfig implements TuningConfig
         null,
         buildV9Directly,
         numBackgroundPersistThreads,
-        forceExtendableShardSpecs
+        forceExtendableShardSpecs,
+        useExplicitVersion
     );
   }
 }

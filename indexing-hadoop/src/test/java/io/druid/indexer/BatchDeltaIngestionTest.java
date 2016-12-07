@@ -27,7 +27,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.metamx.common.Granularity;
 import io.druid.data.input.Firehose;
 import io.druid.data.input.InputRow;
 import io.druid.data.input.impl.CSVParseSpec;
@@ -37,6 +36,7 @@ import io.druid.data.input.impl.TimestampSpec;
 import io.druid.granularity.QueryGranularities;
 import io.druid.indexer.hadoop.WindowedDataSegment;
 import io.druid.jackson.DefaultObjectMapper;
+import io.druid.java.util.common.Granularity;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.LongSumAggregatorFactory;
 import io.druid.query.aggregation.hyperloglog.HyperUniquesAggregatorFactory;
@@ -385,14 +385,15 @@ public class BatchDeltaIngestionTest
                 null,
                 null,
                 null,
+                false,
                 false
             )
         )
     );
 
     config.setShardSpecs(
-        ImmutableMap.<DateTime, List<HadoopyShardSpec>>of(
-            INTERVAL_FULL.getStart(),
+        ImmutableMap.<Long, List<HadoopyShardSpec>>of(
+            INTERVAL_FULL.getStartMillis(),
             ImmutableList.of(
                 new HadoopyShardSpec(
                     new HashBasedNumberedShardSpec(0, 1, null, HadoopDruidIndexerConfig.JSON_MAPPER),

@@ -25,10 +25,10 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.metamx.common.Granularity;
 import io.druid.data.input.MapBasedInputRow;
 import io.druid.granularity.QueryGranularities;
 import io.druid.jackson.DefaultObjectMapper;
+import io.druid.java.util.common.Granularity;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.segment.indexing.DataSchema;
 import io.druid.segment.indexing.granularity.UniformGranularitySpec;
@@ -214,7 +214,7 @@ public class HadoopDruidIndexerConfigTest
             null,
             null,
             null,
-            ImmutableMap.of(new DateTime("2010-01-01T01:00:00"), specs),
+            ImmutableMap.of(new DateTime("2010-01-01T01:00:00").getMillis(), specs),
             null,
             null,
             false,
@@ -227,6 +227,7 @@ public class HadoopDruidIndexerConfigTest
             null,
             null,
             null,
+            false,
             false
         )
     );
@@ -275,12 +276,12 @@ public class HadoopDruidIndexerConfigTest
             null,
             null,
             null,
-            ImmutableMap.<DateTime, List<HadoopyShardSpec>>of(new DateTime("2010-01-01T01:00:00"),
+            ImmutableMap.<Long, List<HadoopyShardSpec>>of(new DateTime("2010-01-01T01:00:00").getMillis(),
                                                               Lists.newArrayList(new HadoopyShardSpec(
                                                                   NoneShardSpec.instance(),
                                                                   1
                                                               )),
-                                                              new DateTime("2010-01-01T02:00:00"),
+                                                              new DateTime("2010-01-01T02:00:00").getMillis(),
                                                               Lists.newArrayList(new HadoopyShardSpec(
                                                                   NoneShardSpec.instance(),
                                                                   2
@@ -298,6 +299,7 @@ public class HadoopDruidIndexerConfigTest
             null,
             null,
             null,
+            false,
             false
         )
     );

@@ -23,8 +23,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
-import com.metamx.common.IAE;
-import com.metamx.common.StringUtils;
+
+import io.druid.java.util.common.IAE;
+import io.druid.java.util.common.StringUtils;
 import io.druid.query.aggregation.Aggregator;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.AggregatorFactoryNotMergeableException;
@@ -98,17 +99,11 @@ public class VarianceAggregatorFactory extends AggregatorFactory
     }
 
     if ("float".equalsIgnoreCase(inputType)) {
-      return new VarianceAggregator.FloatVarianceAggregator(
-          name,
-          metricFactory.makeFloatColumnSelector(fieldName)
-      );
+      return new VarianceAggregator.FloatVarianceAggregator(metricFactory.makeFloatColumnSelector(fieldName));
     } else if ("long".equalsIgnoreCase(inputType)) {
-      return new VarianceAggregator.LongVarianceAggregator(
-          name,
-          metricFactory.makeLongColumnSelector(fieldName)
-      );
+      return new VarianceAggregator.LongVarianceAggregator(metricFactory.makeLongColumnSelector(fieldName));
     } else if ("variance".equalsIgnoreCase(inputType)) {
-      return new VarianceAggregator.ObjectVarianceAggregator(name, selector);
+      return new VarianceAggregator.ObjectVarianceAggregator(selector);
     }
     throw new IAE(
         "Incompatible type for metric[%s], expected a float, long or variance, got a %s", fieldName, inputType
@@ -166,12 +161,6 @@ public class VarianceAggregatorFactory extends AggregatorFactory
   public Comparator getComparator()
   {
     return VarianceAggregatorCollector.COMPARATOR;
-  }
-
-  @Override
-  public Object getAggregatorStartValue()
-  {
-    return new VarianceAggregatorCollector();
   }
 
   @Override

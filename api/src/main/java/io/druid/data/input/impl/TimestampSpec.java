@@ -20,7 +20,9 @@ package io.druid.data.input.impl;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
-import com.metamx.common.parsers.TimestampParser;
+
+import io.druid.java.util.common.parsers.TimestampParser;
+
 import org.joda.time.DateTime;
 
 import java.util.List;
@@ -86,15 +88,19 @@ public class TimestampSpec
 
   public DateTime extractTimestamp(Map<String, Object> input)
   {
-    final Object o = input.get(timestampColumn);
+    return parseDateTime(input.get(timestampColumn));
+  }
+
+  public DateTime parseDateTime(Object input)
+  {
     DateTime extracted = missingValue;
-    if (o != null) {
-      if (o.equals(parseCtx.lastTimeObject)) {
+    if (input != null) {
+      if (input.equals(parseCtx.lastTimeObject)) {
         extracted = parseCtx.lastDateTime;
       } else {
         ParseCtx newCtx = new ParseCtx();
-        newCtx.lastTimeObject = o;
-        extracted = timestampConverter.apply(o);
+        newCtx.lastTimeObject = input;
+        extracted = timestampConverter.apply(input);
         newCtx.lastDateTime = extracted;
         parseCtx = newCtx;
       }

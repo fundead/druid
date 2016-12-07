@@ -24,12 +24,12 @@ import com.google.common.base.Function;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.metamx.common.IAE;
-import com.metamx.common.UOE;
-import com.metamx.common.lifecycle.Lifecycle;
 import com.metamx.emitter.service.ServiceEmitter;
 import io.druid.data.SearchableVersionedDataFinder;
 import io.druid.jackson.DefaultObjectMapper;
+import io.druid.java.util.common.IAE;
+import io.druid.java.util.common.UOE;
+import io.druid.java.util.common.lifecycle.Lifecycle;
 import io.druid.query.lookup.namespace.ExtractionNamespace;
 import io.druid.query.lookup.namespace.ExtractionNamespaceCacheFactory;
 import io.druid.query.lookup.namespace.URIExtractionNamespace;
@@ -40,15 +40,12 @@ import io.druid.server.lookup.namespace.cache.NamespaceExtractionCacheManagersTe
 import io.druid.server.lookup.namespace.cache.OffHeapNamespaceExtractionCacheManager;
 import io.druid.server.lookup.namespace.cache.OnHeapNamespaceExtractionCacheManager;
 import io.druid.server.metrics.NoopServiceEmitter;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
 import org.joda.time.Period;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -72,7 +69,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -280,8 +276,6 @@ public class URIExtractionNamespaceCacheFactoryTest
 
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
-  @Rule
-  public ExpectedException expectedException = ExpectedException.none();
 
   private final String suffix;
   private final Function<File, OutputStream> outStreamSupplier;
@@ -402,21 +396,19 @@ public class URIExtractionNamespaceCacheFactoryTest
     Assert.assertTrue(manager.getKnownIDs().isEmpty());
 
     ConcurrentMap<String, String> map = new ConcurrentHashMap<>();
-    Callable<String> populator = factory.getCachePopulator(id, namespace, null, map);
 
-    String v = populator.call();
+    String v = factory.populateCache(id, namespace, null, map);
     Assert.assertEquals("bar", map.get("foo"));
     Assert.assertEquals(null, map.get("baz"));
     Assert.assertNotNull(v);
 
-    populator = factory.getCachePopulator(id, namespace, v, map);
-    String v2 = populator.call();
+    String v2 = factory.populateCache(id, namespace, v, map);
     Assert.assertEquals(v, v2);
     Assert.assertEquals("bar", map.get("foo"));
     Assert.assertEquals(null, map.get("baz"));
   }
 
-  @Test
+  @Test(expected = FileNotFoundException.class)
   public void testMissing() throws Exception
   {
     URIExtractionNamespace badNamespace = new URIExtractionNamespace(
@@ -428,18 +420,10 @@ public class URIExtractionNamespaceCacheFactoryTest
     );
     Assert.assertTrue(new File(namespace.getUri()).delete());
     ConcurrentMap<String, String> map = new ConcurrentHashMap<>();
-    try {
-      factory.getCachePopulator(id, badNamespace, null, map).call();
-    }
-    catch (RuntimeException e) {
-      Assert.assertNotNull(e.getCause());
-      Assert.assertEquals(FileNotFoundException.class, e.getCause().getClass());
-      return;
-    }
-    Assert.fail("Did not have exception");
+    factory.populateCache(id, badNamespace, null, map);
   }
 
-  @Test
+  @Test(expected = FileNotFoundException.class)
   public void testMissingRegex() throws Exception
   {
     String badId = "bad";
@@ -453,25 +437,7 @@ public class URIExtractionNamespaceCacheFactoryTest
     );
     Assert.assertTrue(new File(namespace.getUri()).delete());
     ConcurrentMap<String, String> map = new ConcurrentHashMap<>();
-    expectedException.expect(new BaseMatcher<Throwable>()
-    {
-      @Override
-      public void describeTo(Description description)
-      {
-
-      }
-
-      @Override
-      public boolean matches(Object o)
-      {
-        if (!(o instanceof Throwable)) {
-          return false;
-        }
-        final Throwable t = (Throwable) o;
-        return t.getCause() != null && t.getCause() instanceof FileNotFoundException;
-      }
-    });
-    factory.getCachePopulator(badId, badNamespace, null, map).call();
+    factory.populateCache(badId, badNamespace, null, map);
   }
 
   @Test(expected = IAE.class)
@@ -560,6 +526,6 @@ public class URIExtractionNamespaceCacheFactoryTest
         null
     );
     final Map<String, String> map = new HashMap<>();
-    Assert.assertNotNull(factory.getCachePopulator(id, extractionNamespace, null, map).call());
+    Assert.assertNotNull(factory.populateCache(id, extractionNamespace, null, map));
   }
 }

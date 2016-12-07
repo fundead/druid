@@ -23,8 +23,9 @@ import com.google.common.collect.Lists;
 import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
-import com.metamx.common.lifecycle.Lifecycle;
-import com.metamx.common.logger.Logger;
+
+import io.druid.java.util.common.lifecycle.Lifecycle;
+import io.druid.java.util.common.logger.Logger;
 
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class LifecycleScope implements Scope
   private final Lifecycle.Stage stage;
 
   private Lifecycle lifecycle;
-  private List<Object> instances = Lists.newLinkedList();
+  private final List<Object> instances = Lists.newLinkedList();
 
   public LifecycleScope(Lifecycle.Stage stage)
   {
@@ -46,8 +47,8 @@ public class LifecycleScope implements Scope
 
   public void setLifecycle(Lifecycle lifecycle)
   {
-    this.lifecycle = lifecycle;
     synchronized (instances) {
+      this.lifecycle = lifecycle;
       for (Object instance : instances) {
         lifecycle.addManagedInstance(instance);
       }

@@ -28,8 +28,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
-import com.google.common.primitives.Longs;
-import com.metamx.common.StringUtils;
+import io.druid.common.guava.GuavaUtils;
+import io.druid.java.util.common.StringUtils;
 import io.druid.query.extraction.ExtractionFn;
 import io.druid.segment.filter.DimensionPredicateFilter;
 import io.druid.segment.filter.SelectorFilter;
@@ -221,7 +221,7 @@ public class SelectorDimFilter implements DimFilter
       if (longsInitialized) {
         return;
       }
-      valueAsLong = Longs.tryParse(value);
+      valueAsLong = GuavaUtils.tryParseLong(value);
       longsInitialized = true;
     }
   }

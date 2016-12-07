@@ -39,7 +39,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.metamx.common.ISE;
 import com.metamx.emitter.EmittingLogger;
 import io.druid.concurrent.Execs;
 import io.druid.indexing.common.TaskInfoProvider;
@@ -64,6 +63,7 @@ import io.druid.indexing.overlord.TaskRunnerWorkItem;
 import io.druid.indexing.overlord.TaskStorage;
 import io.druid.indexing.overlord.supervisor.Supervisor;
 import io.druid.indexing.overlord.supervisor.SupervisorReport;
+import io.druid.java.util.common.ISE;
 import io.druid.metadata.EntryExistsException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -310,28 +310,30 @@ public class KafkaSupervisor implements Supervisor
               }
             }
         );
+        firstRunTime = DateTime.now().plus(ioConfig.getStartDelay());
+        scheduledExec.scheduleAtFixedRate(
+            buildRunTask(),
+            ioConfig.getStartDelay().getMillis(),
+            Math.max(ioConfig.getPeriod().getMillis(), MAX_RUN_FREQUENCY_MILLIS),
+            TimeUnit.MILLISECONDS
+        );
+
+        started = true;
+        log.info(
+            "Started KafkaSupervisor[%s], first run in [%s], with spec: [%s]",
+            dataSource,
+            ioConfig.getStartDelay(),
+            spec.toString()
+        );
       }
       catch (Exception e) {
+        if (consumer != null) {
+          consumer.close();
+        }
         log.makeAlert(e, "Exception starting KafkaSupervisor[%s]", dataSource)
            .emit();
         throw Throwables.propagate(e);
       }
-
-      firstRunTime = DateTime.now().plus(ioConfig.getStartDelay());
-      scheduledExec.scheduleAtFixedRate(
-          buildRunTask(),
-          ioConfig.getStartDelay().getMillis(),
-          Math.max(ioConfig.getPeriod().getMillis(), MAX_RUN_FREQUENCY_MILLIS),
-          TimeUnit.MILLISECONDS
-      );
-
-      started = true;
-      log.info(
-          "Started KafkaSupervisor[%s], first run in [%s], with spec: [%s]",
-          dataSource,
-          ioConfig.getStartDelay(),
-          spec.toString()
-      );
     }
   }
 
@@ -1259,7 +1261,8 @@ public class KafkaSupervisor implements Supervisor
         consumerProperties,
         true,
         false,
-        minimumMessageTime
+        minimumMessageTime,
+        ioConfig.isUseEarliestOffset()
     );
 
     for (int i = 0; i < replicas; i++) {
@@ -1270,7 +1273,7 @@ public class KafkaSupervisor implements Supervisor
           spec.getDataSchema(),
           taskTuningConfig,
           kafkaIOConfig,
-          ImmutableMap.<String, Object>of(),
+          spec.getContext(),
           null
       );
 

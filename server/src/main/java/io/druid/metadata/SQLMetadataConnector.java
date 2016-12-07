@@ -23,9 +23,11 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
-import com.metamx.common.ISE;
-import com.metamx.common.RetryUtils;
-import com.metamx.common.logger.Logger;
+
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.RetryUtils;
+import io.druid.java.util.common.logger.Logger;
+
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.skife.jdbi.v2.Batch;
 import org.skife.jdbi.v2.DBI;
@@ -624,6 +626,33 @@ public abstract class SQLMetadataConnector implements MetadataStorageConnector
   {
     if (config.get().isCreateTables()) {
       createAuditTable(tablesConfigSupplier.get().getAuditTable());
+    }
+  }
+
+  public void deleteAllRecords(final String tableName)
+  {
+    try {
+      retryWithHandle(
+          new HandleCallback<Void>()
+          {
+            @Override
+            public Void withHandle(Handle handle) throws Exception
+            {
+              if (tableExists(handle, tableName)) {
+                log.info("Deleting all records from table[%s]", tableName);
+                final Batch batch = handle.createBatch();
+                batch.add("DELETE FROM " + tableName);
+                batch.execute();
+              } else {
+                log.info("Table[%s] does not exit.", tableName);
+              }
+              return null;
+            }
+          }
+      );
+    }
+    catch (Exception e) {
+      log.warn(e, "Exception while deleting records from table");
     }
   }
 }

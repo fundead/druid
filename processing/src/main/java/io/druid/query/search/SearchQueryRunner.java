@@ -25,16 +25,16 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.metamx.collections.bitmap.BitmapFactory;
-import com.metamx.collections.bitmap.ImmutableBitmap;
-import com.metamx.collections.bitmap.MutableBitmap;
-import com.metamx.common.IAE;
-import com.metamx.common.ISE;
-import com.metamx.common.guava.Accumulator;
-import com.metamx.common.guava.FunctionalIterable;
-import com.metamx.common.guava.Sequence;
-import com.metamx.common.guava.Sequences;
+import io.druid.collections.bitmap.BitmapFactory;
+import io.druid.collections.bitmap.ImmutableBitmap;
+import io.druid.collections.bitmap.MutableBitmap;
 import com.metamx.emitter.EmittingLogger;
+import io.druid.java.util.common.IAE;
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.guava.Accumulator;
+import io.druid.java.util.common.guava.FunctionalIterable;
+import io.druid.java.util.common.guava.Sequence;
+import io.druid.java.util.common.guava.Sequences;
 import io.druid.query.Druids;
 import io.druid.query.Query;
 import io.druid.query.QueryRunner;
@@ -121,18 +121,22 @@ public class SearchQueryRunner implements QueryRunner<Result<SearchResultValue>>
       if (!interval.contains(segment.getDataInterval())) {
         MutableBitmap timeBitmap = bitmapFactory.makeEmptyMutableBitmap();
         final Column timeColumn = index.getColumn(Column.TIME_COLUMN_NAME);
-        final GenericColumn timeValues = timeColumn.getGenericColumn();
+        try (final GenericColumn timeValues = timeColumn.getGenericColumn()) {
 
-        int startIndex = Math.max(0, getStartIndexOfTime(timeValues, interval.getStartMillis(), true));
-        int endIndex = Math.min(timeValues.length() - 1, getStartIndexOfTime(timeValues, interval.getEndMillis(), false));
+          int startIndex = Math.max(0, getStartIndexOfTime(timeValues, interval.getStartMillis(), true));
+          int endIndex = Math.min(
+              timeValues.length() - 1,
+              getStartIndexOfTime(timeValues, interval.getEndMillis(), false)
+          );
 
-        for (int i = startIndex; i <= endIndex; i++) {
-          timeBitmap.add(i);
+          for (int i = startIndex; i <= endIndex; i++) {
+            timeBitmap.add(i);
+          }
+
+          final ImmutableBitmap finalTimeBitmap = bitmapFactory.makeImmutableBitmap(timeBitmap);
+          timeFilteredBitmap =
+              (baseFilter == null) ? finalTimeBitmap : finalTimeBitmap.intersection(baseFilter);
         }
-
-        final ImmutableBitmap finalTimeBitmap = bitmapFactory.makeImmutableBitmap(timeBitmap);
-        timeFilteredBitmap =
-            (baseFilter == null) ? finalTimeBitmap : finalTimeBitmap.intersection(baseFilter);
       } else {
         timeFilteredBitmap = baseFilter;
       }
@@ -256,11 +260,11 @@ public class SearchQueryRunner implements QueryRunner<Result<SearchResultValue>>
       int mid = (low + high) >>> 1;
       long midVal = timeValues.getLongSingleValueRow(mid);
 
-      if (midVal < time)
+      if (midVal < time) {
         low = mid + 1;
-      else if (midVal > time)
+      } else if (midVal > time) {
         high = mid - 1;
-      else { // key found
+      } else { // key found
         int i;
         // rewind the index of the same time values
         for (i = mid - 1; i >= 0; i--) {

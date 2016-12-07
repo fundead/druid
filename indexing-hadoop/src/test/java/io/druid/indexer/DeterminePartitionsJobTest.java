@@ -22,20 +22,19 @@ package io.druid.indexer;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
-import com.metamx.common.Granularity;
 import io.druid.data.input.impl.CSVParseSpec;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.data.input.impl.StringInputRowParser;
 import io.druid.data.input.impl.TimestampSpec;
 import io.druid.granularity.QueryGranularities;
 import io.druid.indexer.partitions.SingleDimensionPartitionsSpec;
+import io.druid.java.util.common.Granularity;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.LongSumAggregatorFactory;
 import io.druid.segment.indexing.DataSchema;
 import io.druid.segment.indexing.granularity.UniformGranularitySpec;
 import io.druid.timeline.partition.SingleDimensionShardSpec;
 import org.apache.commons.io.FileUtils;
-import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.junit.After;
 import org.junit.Assert;
@@ -268,6 +267,7 @@ public class DeterminePartitionsJobTest
                 null,
                 null,
                 null,
+                false,
                 false
             )
         )
@@ -284,7 +284,7 @@ public class DeterminePartitionsJobTest
     int segmentNum = 0;
     Assert.assertEquals(expectedNumOfSegments, config.getSchema().getTuningConfig().getShardSpecs().size());
 
-    for (Map.Entry<DateTime, List<HadoopyShardSpec>> entry : config.getSchema()
+    for (Map.Entry<Long, List<HadoopyShardSpec>> entry : config.getSchema()
                                                                    .getTuningConfig()
                                                                    .getShardSpecs()
                                                                    .entrySet()) {

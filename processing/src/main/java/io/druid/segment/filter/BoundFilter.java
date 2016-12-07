@@ -21,7 +21,7 @@ package io.druid.segment.filter;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
-import com.metamx.collections.bitmap.ImmutableBitmap;
+import io.druid.collections.bitmap.ImmutableBitmap;
 import io.druid.query.extraction.ExtractionFn;
 import io.druid.query.filter.BitmapIndexSelector;
 import io.druid.query.filter.BoundDimFilter;
@@ -61,12 +61,7 @@ public class BoundFilter implements Filter
       final BitmapIndex bitmapIndex = selector.getBitmapIndex(boundDimFilter.getDimension());
 
       if (bitmapIndex == null || bitmapIndex.getCardinality() == 0) {
-        if (doesMatch(null)) {
-          return selector.getBitmapFactory()
-                         .complement(selector.getBitmapFactory().makeEmptyImmutableBitmap(), selector.getNumRows());
-        } else {
-          return selector.getBitmapFactory().makeEmptyImmutableBitmap();
-        }
+        return doesMatch(null) ? Filters.allTrue(selector) : Filters.allFalse(selector);
       }
 
       // search for start, end indexes in the bitmaps; then include all bitmaps between those points

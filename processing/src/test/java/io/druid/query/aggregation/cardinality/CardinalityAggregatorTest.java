@@ -34,21 +34,20 @@ import io.druid.query.aggregation.BufferAggregator;
 import io.druid.query.dimension.DefaultDimensionSpec;
 import io.druid.query.dimension.DimensionSpec;
 import io.druid.query.dimension.ExtractionDimensionSpec;
-import io.druid.query.dimension.LookupDimensionSpec;
 import io.druid.query.dimension.RegexFilteredDimensionSpec;
 import io.druid.query.extraction.ExtractionFn;
 import io.druid.query.extraction.JavaScriptExtractionFn;
 import io.druid.query.extraction.RegexDimExtractionFn;
-import io.druid.query.extraction.UpperExtractionFn;
 import io.druid.segment.DimensionSelector;
 import io.druid.segment.data.IndexedInts;
+import it.unimi.dsi.fastutil.ints.IntIterator;
+import it.unimi.dsi.fastutil.ints.IntIterators;
 import org.junit.Assert;
 import org.junit.Test;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -136,9 +135,9 @@ public class CardinalityAggregatorTest
         }
 
         @Override
-        public Iterator<Integer> iterator()
+        public IntIterator iterator()
         {
-          return Iterators.forArray(column.get(p));
+          return IntIterators.asIntIterator(Iterators.forArray(column.get(p)));
         }
 
         @Override
@@ -311,7 +310,6 @@ public class CardinalityAggregatorTest
   public void testAggregateRows() throws Exception
   {
     CardinalityAggregator agg = new CardinalityAggregator(
-        "billy",
         selectorList,
         true
     );
@@ -327,7 +325,6 @@ public class CardinalityAggregatorTest
   public void testAggregateValues() throws Exception
   {
     CardinalityAggregator agg = new CardinalityAggregator(
-        "billy",
         selectorList,
         false
     );
@@ -386,8 +383,8 @@ public class CardinalityAggregatorTest
     List<DimensionSelector> selector1 = Lists.newArrayList((DimensionSelector) dim1);
     List<DimensionSelector> selector2 = Lists.newArrayList((DimensionSelector) dim2);
 
-    CardinalityAggregator agg1 = new CardinalityAggregator("billy", selector1, true);
-    CardinalityAggregator agg2 = new CardinalityAggregator("billy", selector2, true);
+    CardinalityAggregator agg1 = new CardinalityAggregator(selector1, true);
+    CardinalityAggregator agg2 = new CardinalityAggregator(selector2, true);
 
     for (int i = 0; i < values1.size(); ++i) {
       aggregate(selector1, agg1);
@@ -417,8 +414,8 @@ public class CardinalityAggregatorTest
     List<DimensionSelector> selector1 = Lists.newArrayList((DimensionSelector) dim1);
     List<DimensionSelector> selector2 = Lists.newArrayList((DimensionSelector) dim2);
 
-    CardinalityAggregator agg1 = new CardinalityAggregator("billy", selector1, false);
-    CardinalityAggregator agg2 = new CardinalityAggregator("billy", selector2, false);
+    CardinalityAggregator agg1 = new CardinalityAggregator(selector1, false);
+    CardinalityAggregator agg2 = new CardinalityAggregator(selector2, false);
 
     for (int i = 0; i < values1.size(); ++i) {
       aggregate(selector1, agg1);
@@ -446,7 +443,6 @@ public class CardinalityAggregatorTest
   public void testAggregateRowsWithExtraction() throws Exception
   {
     CardinalityAggregator agg = new CardinalityAggregator(
-        "billy",
         selectorListWithExtraction,
         true
     );
@@ -456,7 +452,6 @@ public class CardinalityAggregatorTest
     Assert.assertEquals(9.0, (Double) rowAggregatorFactory.finalizeComputation(agg.get()), 0.05);
 
     CardinalityAggregator agg2 = new CardinalityAggregator(
-        "billy",
         selectorListConstantVal,
         true
     );
@@ -470,7 +465,6 @@ public class CardinalityAggregatorTest
   public void testAggregateValuesWithExtraction() throws Exception
   {
     CardinalityAggregator agg = new CardinalityAggregator(
-        "billy",
         selectorListWithExtraction,
         false
     );
@@ -480,7 +474,6 @@ public class CardinalityAggregatorTest
     Assert.assertEquals(7.0, (Double) valueAggregatorFactory.finalizeComputation(agg.get()), 0.05);
 
     CardinalityAggregator agg2 = new CardinalityAggregator(
-        "billy",
         selectorListConstantVal,
         false
     );

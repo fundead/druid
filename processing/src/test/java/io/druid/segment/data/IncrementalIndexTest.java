@@ -30,14 +30,14 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.metamx.common.guava.Accumulator;
-import com.metamx.common.guava.Sequence;
-import com.metamx.common.guava.Sequences;
 import io.druid.collections.StupidPool;
 import io.druid.data.input.MapBasedInputRow;
 import io.druid.data.input.Row;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.granularity.QueryGranularities;
+import io.druid.java.util.common.guava.Accumulator;
+import io.druid.java.util.common.guava.Sequence;
+import io.druid.java.util.common.guava.Sequences;
 import io.druid.query.Druids;
 import io.druid.query.FinalizeResultsQueryRunner;
 import io.druid.query.QueryRunner;
@@ -196,6 +196,19 @@ public class IncrementalIndexTest
     return defaultCombiningAggregatorFactories;
   }
 
+  public static IncrementalIndex createIndex(
+      AggregatorFactory[] aggregatorFactories,
+      DimensionsSpec dimensionsSpec)
+  {
+    if (null == aggregatorFactories) {
+      aggregatorFactories = defaultAggregatorFactories;
+    }
+
+    return new OnheapIncrementalIndex(
+        0L, QueryGranularities.NONE, true, dimensionsSpec, aggregatorFactories, 1000000
+    );
+  }
+
   public static IncrementalIndex createIndex(AggregatorFactory[] aggregatorFactories)
   {
     if (null == aggregatorFactories) {
@@ -203,7 +216,7 @@ public class IncrementalIndexTest
     }
 
     return new OnheapIncrementalIndex(
-        0L, QueryGranularities.NONE, aggregatorFactories, 1000000
+        0L, QueryGranularities.NONE, true, null, aggregatorFactories, 1000000
     );
   }
 
@@ -214,7 +227,7 @@ public class IncrementalIndexTest
     }
 
     return new OnheapIncrementalIndex(
-        0L, QueryGranularities.NONE, false, aggregatorFactories, 1000000
+        0L, QueryGranularities.NONE, false, null, aggregatorFactories, 1000000
     );
   }
 

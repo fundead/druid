@@ -26,7 +26,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.metamx.common.parsers.ParserUtils;
+
+import io.druid.java.util.common.parsers.ParserUtils;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -41,7 +42,20 @@ public class DimensionsSpec
   private final Set<String> dimensionExclusions;
   private final Map<String, DimensionSchema> dimensionSchemaMap;
 
+  public static DimensionsSpec ofEmpty()
+  {
+    return new DimensionsSpec(null, null, null);
+  }
+
   public static List<DimensionSchema> getDefaultSchemas(List<String> dimNames)
+  {
+    return getDefaultSchemas(dimNames, DimensionSchema.MultiValueHandling.ofDefault());
+  }
+
+  public static List<DimensionSchema> getDefaultSchemas(
+      final List<String> dimNames,
+      final DimensionSchema.MultiValueHandling multiValueHandling
+  )
   {
     return Lists.transform(
         dimNames,
@@ -50,7 +64,7 @@ public class DimensionsSpec
           @Override
           public DimensionSchema apply(String input)
           {
-            return new StringDimensionSchema(input);
+            return new StringDimensionSchema(input, multiValueHandling);
           }
         }
     );

@@ -34,9 +34,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-import com.metamx.common.ISE;
-import com.metamx.common.guava.Comparators;
-import com.metamx.common.logger.Logger;
+
 import io.druid.data.input.Committer;
 import io.druid.data.input.Firehose;
 import io.druid.data.input.FirehoseFactory;
@@ -47,6 +45,9 @@ import io.druid.indexing.common.TaskLock;
 import io.druid.indexing.common.TaskStatus;
 import io.druid.indexing.common.TaskToolbox;
 import io.druid.indexing.common.index.YeOldePlumberSchool;
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.guava.Comparators;
+import io.druid.java.util.common.logger.Logger;
 import io.druid.query.aggregation.hyperloglog.HyperLogLogCollector;
 import io.druid.segment.IndexSpec;
 import io.druid.segment.indexing.DataSchema;
@@ -522,7 +523,7 @@ public class IndexTask extends AbstractFixedIntervalTask
     private static final int DEFAULT_TARGET_PARTITION_SIZE = 5000000;
     private static final int DEFAULT_ROW_FLUSH_BOUNDARY = 75000;
     private static final IndexSpec DEFAULT_INDEX_SPEC = new IndexSpec();
-    private static final Boolean DEFAULT_BUILD_V9_DIRECTLY = Boolean.FALSE;
+    private static final Boolean DEFAULT_BUILD_V9_DIRECTLY = Boolean.TRUE;
 
     private final int targetPartitionSize;
     private final int rowFlushBoundary;

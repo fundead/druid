@@ -20,7 +20,11 @@
 package io.druid.query.aggregation;
 
 import com.google.common.collect.Lists;
-import com.metamx.common.Pair;
+import io.druid.segment.ColumnSelectorFactory;
+import io.druid.segment.FloatColumnSelector;
+import io.druid.segment.LongColumnSelector;
+import io.druid.segment.NumericColumnSelector;
+import io.druid.java.util.common.Pair;
 
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -83,5 +87,55 @@ public class AggregatorUtil
       }
     }
     return new Pair(condensedAggs, condensedPostAggs);
+  }
+
+  public static FloatColumnSelector getFloatColumnSelector(
+      final ColumnSelectorFactory metricFactory,
+      final String fieldName,
+      final String fieldExpression,
+      final float nullValue
+  )
+  {
+    if (fieldName != null && fieldExpression == null) {
+      return metricFactory.makeFloatColumnSelector(fieldName);
+    }
+    if (fieldName == null && fieldExpression != null) {
+      final NumericColumnSelector numeric = metricFactory.makeMathExpressionSelector(fieldExpression);
+      return new FloatColumnSelector()
+      {
+        @Override
+        public float get()
+        {
+          final Number number = numeric.get();
+          return number == null ? nullValue : number.floatValue();
+        }
+      };
+    }
+    throw new IllegalArgumentException("Must have a valid, non-null fieldName or expression");
+  }
+
+  public static LongColumnSelector getLongColumnSelector(
+      final ColumnSelectorFactory metricFactory,
+      final String fieldName,
+      final String fieldExpression,
+      final long nullValue
+  )
+  {
+    if (fieldName != null && fieldExpression == null) {
+      return metricFactory.makeLongColumnSelector(fieldName);
+    }
+    if (fieldName == null && fieldExpression != null) {
+      final NumericColumnSelector numeric = metricFactory.makeMathExpressionSelector(fieldExpression);
+      return new LongColumnSelector()
+      {
+        @Override
+        public long get()
+        {
+          final Number number = numeric.get();
+          return number == null ? nullValue : number.longValue();
+        }
+      };
+    }
+    throw new IllegalArgumentException("Must have a valid, non-null fieldName or expression");
   }
 }

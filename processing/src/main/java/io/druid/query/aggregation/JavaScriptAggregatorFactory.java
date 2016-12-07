@@ -28,8 +28,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
-import com.metamx.common.ISE;
-import com.metamx.common.StringUtils;
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.StringUtils;
 import io.druid.js.JavaScriptConfig;
 import io.druid.segment.ColumnSelectorFactory;
 import io.druid.segment.ObjectColumnSelector;
@@ -96,7 +96,6 @@ public class JavaScriptAggregatorFactory extends AggregatorFactory
   public Aggregator factorize(final ColumnSelectorFactory columnFactory)
   {
     return new JavaScriptAggregator(
-        name,
         Lists.transform(
             fieldNames,
             new com.google.common.base.Function<String, ObjectColumnSelector>()
@@ -261,12 +260,6 @@ public class JavaScriptAggregatorFactory extends AggregatorFactory
   public int getMaxIntermediateSize()
   {
     return Doubles.BYTES;
-  }
-
-  @Override
-  public Object getAggregatorStartValue()
-  {
-    return getCompiledScript().reset();
   }
 
   @Override

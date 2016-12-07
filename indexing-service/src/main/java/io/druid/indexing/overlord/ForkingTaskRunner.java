@@ -43,10 +43,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Inject;
-import com.metamx.common.ISE;
-import com.metamx.common.Pair;
-import com.metamx.common.lifecycle.LifecycleStop;
-import com.metamx.common.logger.Logger;
 import com.metamx.emitter.EmittingLogger;
 import io.druid.concurrent.Execs;
 import io.druid.guice.annotations.Self;
@@ -58,6 +54,10 @@ import io.druid.indexing.common.tasklogs.LogUtils;
 import io.druid.indexing.overlord.autoscaling.ScalingStats;
 import io.druid.indexing.overlord.config.ForkingTaskRunnerConfig;
 import io.druid.indexing.worker.config.WorkerConfig;
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.Pair;
+import io.druid.java.util.common.lifecycle.LifecycleStop;
+import io.druid.java.util.common.logger.Logger;
 import io.druid.query.DruidMetrics;
 import io.druid.server.DruidNode;
 import io.druid.server.metrics.MonitorsConfig;
@@ -67,6 +67,7 @@ import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
+import javax.annotation.concurrent.GuardedBy;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -548,7 +549,10 @@ public class ForkingTaskRunner implements TaskRunner, TaskLogStreamer
         if (terminated) {
           log.info("Finished stopping in %,dms.", elapsed);
         } else {
-          final Set<String> stillRunning = ImmutableSet.copyOf(tasks.keySet());
+          final Set<String> stillRunning;
+          synchronized (tasks) {
+            stillRunning = ImmutableSet.copyOf(tasks.keySet());
+          }
 
           log.makeAlert("Failed to stop forked tasks")
              .addData("stillRunning", stillRunning)
@@ -670,6 +674,7 @@ public class ForkingTaskRunner implements TaskRunner, TaskLogStreamer
 
   // Save running tasks to a file, so they can potentially be restored on next startup. Suppresses exceptions that
   // occur while saving.
+  @GuardedBy("tasks")
   private void saveRunningTasks()
   {
     final File restoreFile = getRestoreFile();

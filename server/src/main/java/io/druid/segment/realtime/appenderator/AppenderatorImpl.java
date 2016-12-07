@@ -35,9 +35,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.metamx.common.IAE;
-import com.metamx.common.ISE;
-import com.metamx.common.Pair;
 import com.metamx.emitter.EmittingLogger;
 import com.metamx.emitter.service.ServiceEmitter;
 import io.druid.client.cache.Cache;
@@ -46,6 +43,9 @@ import io.druid.common.guava.ThreadRenamingCallable;
 import io.druid.concurrent.Execs;
 import io.druid.data.input.Committer;
 import io.druid.data.input.InputRow;
+import io.druid.java.util.common.IAE;
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.Pair;
 import io.druid.query.Query;
 import io.druid.query.QueryRunner;
 import io.druid.query.QueryRunnerFactoryConglomerate;
@@ -143,7 +143,7 @@ public class AppenderatorImpl implements Appenderator
     this.segmentAnnouncer = Preconditions.checkNotNull(segmentAnnouncer, "segmentAnnouncer");
     this.indexIO = Preconditions.checkNotNull(indexIO, "indexIO");
     this.indexMerger = Preconditions.checkNotNull(indexMerger, "indexMerger");
-    this.cache = Preconditions.checkNotNull(cache, "cache");
+    this.cache = cache;
     this.texasRanger = conglomerate == null ? null : new SinkQuerySegmentWalker(
         schema.getDataSource(),
         sinkTimeline,
@@ -151,7 +151,7 @@ public class AppenderatorImpl implements Appenderator
         emitter,
         conglomerate,
         queryExecutorService,
-        cache,
+        Preconditions.checkNotNull(cache, "cache"),
         cacheConfig
     );
 
@@ -912,7 +912,9 @@ public class AppenderatorImpl implements Appenderator
                 identifier.getShardSpec().createChunk(sink)
             );
             for (FireHydrant hydrant : sink) {
-              cache.close(SinkQuerySegmentWalker.makeHydrantCacheIdentifier(hydrant));
+              if (cache != null) {
+                cache.close(SinkQuerySegmentWalker.makeHydrantCacheIdentifier(hydrant));
+              }
             }
 
             if (removeOnDiskData) {

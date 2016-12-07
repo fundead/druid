@@ -26,10 +26,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.metamx.common.IAE;
-import com.metamx.common.lifecycle.Lifecycle;
 import io.druid.concurrent.Execs;
 import io.druid.data.SearchableVersionedDataFinder;
+import io.druid.java.util.common.IAE;
+import io.druid.java.util.common.lifecycle.Lifecycle;
 import io.druid.query.lookup.namespace.ExtractionNamespace;
 import io.druid.query.lookup.namespace.ExtractionNamespaceCacheFactory;
 import io.druid.query.lookup.namespace.URIExtractionNamespace;
@@ -55,7 +55,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -93,24 +92,17 @@ public class NamespaceExtractionCacheManagerExecutorsTest
     )
     {
       @Override
-      public Callable<String> getCachePopulator(
+      public String populateCache(
           final String id,
           final URIExtractionNamespace extractionNamespace,
           final String lastVersion,
           final Map<String, String> cache
-      )
+      ) throws Exception
       {
-        return new Callable<String>()
-        {
-          @Override
-          public String call() throws Exception
-          {
-            // Don't actually read off disk because TravisCI doesn't like that
-            cache.put(KEY, VALUE);
-            Thread.sleep(2);// To make absolutely sure there is a unique currentTimeMillis
-            return Long.toString(System.currentTimeMillis());
-          }
-        };
+        // Don't actually read off disk because TravisCI doesn't like that
+        cache.put(KEY,VALUE);
+        Thread.sleep(2);// To make absolutely sure there is a unique currentTimeMillis
+        return Long.toString(System.currentTimeMillis());
       }
     };
     manager = new OnHeapNamespaceExtractionCacheManager(
@@ -122,32 +114,19 @@ public class NamespaceExtractionCacheManagerExecutorsTest
     )
     {
       @Override
-      protected <T extends ExtractionNamespace> Runnable getPostRunnable(
-          final String id,
-          final T namespace,
-          final ExtractionNamespaceCacheFactory<T> factory,
-          final String cacheId
-      )
+      protected void updateNamespace(final String id, final String cacheId, final String newVersion)
       {
-        final Runnable runnable = super.getPostRunnable(id, namespace, factory, cacheId);
         cacheUpdateAlerts.putIfAbsent(id, new Object());
         final Object cacheUpdateAlerter = cacheUpdateAlerts.get(id);
-        return new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            synchronized (cacheUpdateAlerter) {
-              try {
-                runnable.run();
-                numRuns.incrementAndGet();
-              }
-              finally {
-                cacheUpdateAlerter.notifyAll();
-              }
-            }
+        synchronized (cacheUpdateAlerter) {
+          try {
+            super.updateNamespace(id, cacheId, newVersion);
+            numRuns.incrementAndGet();
           }
-        };
+          finally {
+            cacheUpdateAlerter.notifyAll();
+          }
+        }
       }
     };
     tmpFile = Files.createTempFile(tmpDir, "druidTestURIExtractionNS", ".dat").toFile();

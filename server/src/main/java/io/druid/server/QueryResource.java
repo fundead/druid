@@ -28,15 +28,15 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.MapMaker;
 import com.google.common.io.CountingOutputStream;
 import com.google.inject.Inject;
-import com.metamx.common.ISE;
-import com.metamx.common.guava.Sequence;
-import com.metamx.common.guava.Sequences;
-import com.metamx.common.guava.Yielder;
-import com.metamx.common.guava.YieldingAccumulator;
 import com.metamx.emitter.EmittingLogger;
 import com.metamx.emitter.service.ServiceEmitter;
 import io.druid.guice.annotations.Json;
 import io.druid.guice.annotations.Smile;
+import io.druid.java.util.common.ISE;
+import io.druid.java.util.common.guava.Sequence;
+import io.druid.java.util.common.guava.Sequences;
+import io.druid.java.util.common.guava.Yielder;
+import io.druid.java.util.common.guava.YieldingAccumulator;
 import io.druid.query.DruidMetrics;
 import io.druid.query.Query;
 import io.druid.query.QueryContextKeys;
@@ -188,7 +188,7 @@ public class QueryResource
       toolChest = warehouse.getToolChest(query);
 
       Thread.currentThread()
-            .setName(String.format("%s[%s_%s_%s]", currThreadName, query.getType(), query.getDataSource(), queryId));
+            .setName(String.format("%s[%s_%s_%s]", currThreadName, query.getType(), query.getDataSource().getNames(), queryId));
       if (log.isDebugEnabled()) {
         log.debug("Got query [%s]", query);
       }
@@ -307,7 +307,7 @@ public class QueryResource
     }
     catch (QueryInterruptedException e) {
       try {
-        log.info("%s [%s]", e.getMessage(), queryId);
+        log.warn(e, "Exception while processing queryId [%s]", queryId);
         final long queryTime = System.currentTimeMillis() - start;
         emitter.emit(
             DruidMetrics.makeQueryTimeMetric(toolChest, jsonMapper, query, req.getRemoteAddr())
